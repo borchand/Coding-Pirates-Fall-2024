@@ -1,0 +1,164 @@
+﻿@using Newtonsoft.Json
+
+@page "/weather"
+@attribute [StreamRendering]
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (newforecasts == null || newforecasts?.HourlyData == null || newforecasts?.HourlyData.Time == null){
+    <p><em>Loading...</em></p>
+}
+else{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Temperature 2m</th>
+                <th>Apparent Temperature</th>
+                <th>Precipitation Probability</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < newforecasts.HourlyData.Time.Length; i++)
+            {
+                <tr>
+                    <td>@newforecasts.HourlyData.Time[i].Split("T")[1]</td>
+                    <td>@newforecasts.HourlyData.Temperature2m[i] @newforecasts.HourlyUnits.Temperature2m</td>
+                    <td>@newforecasts.HourlyData.ApparentTemperature[i] @newforecasts.HourlyUnits.ApparentTemperature</td>
+                    <td>@newforecasts.HourlyData.PrecipitationProbability[i] @newforecasts.HourlyUnits.PrecipitationProbability</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private WeatherForecast[]? forecasts;
+
+    private NewWeatherData? newforecasts;
+    private string _connectionString = "https://api.open-meteo.com/v1/";
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        // Simulate asynchronous loading to demonstrate streaming rendering
+        await Task.Delay(500);
+
+        var startDate = DateOnly.FromDateTime(DateTime.Now);
+        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
+        forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        {
+            Date = startDate.AddDays(index),
+            TemperatureC = Random.Shared.Next(-20, 55),
+            Summary = summaries[Random.Shared.Next(summaries.Length)]
+        }).ToArray();
+
+        await GetLiveData();
+    }
+
+    private async Task GetLiveData()
+    {
+        using (var client = new HttpClient())
+        {
+            client.BaseAddress = new Uri(_connectionString);
+            client.DefaultRequestHeaders.Accept.Clear();
+
+            var lat = 55.67;
+            var lon = 12.56;
+            var url = $"forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability&forecast_days=1";
+
+            HttpResponseMessage response = await client.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var apiData = await response.Content.ReadAsStringAsync();
+                var temp = JsonConvert.DeserializeObject<List<NewWeatherData>>(apiData);
+                if (temp != null)
+                {
+                    newforecasts = temp[0];
+                }
+            }
+        }
+    }
+
+    private class WeatherForecast
+    {
+        public DateOnly Date { get; set; }
+        public int TemperatureC { get; set; }
+        public string? Summary { get; set; }
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    }
+
+    public class NewWeatherData
+    {
+        [JsonProperty("hourly_units")]
+        public HourlyUnits HourlyUnits { get; set; } = new HourlyUnits();
+
+        [JsonProperty("hourly")]
+        public HourlyData HourlyData { get; set; } = new HourlyData();
+    }
+
+    public class HourlyUnits
+    {
+        [JsonProperty("time")]
+        public string Time { get; set; } = string.Empty;
+
+        [JsonProperty("temperature_2m")]
+        public string Temperature2m { get; set; } = string.Empty;
+
+        [JsonProperty("apparent_temperature")]
+        public string ApparentTemperature { get; set; } = string.Empty;
+
+        [JsonProperty("precipitation_probability")]
+        public string PrecipitationProbability { get; set; } = string.Empty;
+    }
+
+    public class HourlyData
+    {
+        [JsonProperty("time")]
+        public string[] Time { get; set; } = Array.Empty<string>();
+
+        [JsonProperty("temperature_2m")]
+        public double[] Temperature2m { get; set; } = Array.Empty<double>();
+
+        [JsonProperty("apparent_temperature")]
+        public double[] ApparentTemperature { get; set; }  = Array.Empty<double>();
+
+        [JsonProperty("precipitation_probability")]
+        public int[] PrecipitationProbability { get; set; } = Array.Empty<int>();
+    }
+}
+
+
