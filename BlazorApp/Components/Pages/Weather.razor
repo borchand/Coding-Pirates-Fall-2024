@@ -20,7 +20,7 @@
             <div class="card" style="height:400px">
                 <div class="card-body overflow-auto ">
                     @if (Model == null || Model?.CurrentData == null){
-                        <h5 class="card-title">Weather Data</h5>
+                        <h5 class="card-title">Current Weather Data</h5>
                         <p class="card-text">Click on the map to get the weather data</p>
                     }
                     else{
@@ -69,7 +69,7 @@
     <div class="row mt-4">
         <div class="col">
             @if (Model == null || Model?.HourlyData == null || Model?.HourlyData.Time == null){
-                <h3>No data available</h3>
+                <h3>7 day forecast</h3>
                 <p>Please click on the map to get the weather data</p>
             }
             else{
