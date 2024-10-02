@@ -13,7 +13,55 @@
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode=RenderMode.InteractiveServer/>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB9eCDjQMeM1RybBzxQIVa6yuDZOdT7Qo0&loading=async"></script> 
+    <script>
+
+        class MapsHelpers {
+            static dotNetHelper;
+
+            static async setDotNetHelper(value) {
+                MapsHelpers.dotNetHelper = value;
+                await MapsHelpers.initialize(MapsHelpers.dotNetHelper);
+            }
+
+            static async initialize(dotNetHelper) { 
+            
+                // get the lat and long from browser
+                navigator.geolocation.getCurrentPosition(function (position) { 
+                    var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); 
+                    var options = { 
+                        zoom: 14, center: latlng, 
+                        mapTypeId: google.maps.MapTypeId.ROADMAP,
+                
+                    }; 
+                    var map = new google.maps.Map(document.getElementById("map"), options); 
+                    var markers = [];
+                    map.addListener("click", (e) => { 
+                        // clear the marker if already set  
+                        markers.forEach(marker => marker.setMap(null)); 
+
+                        // set marker on the map
+                        var marker = new google.maps.Marker({ 
+                            position: e.latLng, 
+                            map: map, 
+                        }); 
+
+                        markers.push(marker);
+
+                        // set input fields with lat and long
+                        const lat = e.latLng.lat();
+                        const lon = e.latLng.lng();
+
+                        MapsHelpers.dotNetHelper.invokeMethodAsync("GetLiveData", lat, lon);
+                    });
+                });
+            } 
+        }
+
+        window.MapsHelpers = MapsHelpers;
+        
+    </script>
     <script src="_framework/blazor.web.js"></script>
 </body>
 

@@ -1,5 +1,14 @@
 # Coding-Pirates-Fall-2024
 
+## How to run
+```bash
+dotnet run
+```
+or to run with hot reload
+```bash
+dotnet watch
+```
+
 ## Weather data
 
 ConnectionString:

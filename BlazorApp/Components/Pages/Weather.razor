@@ -1,164 +1,292 @@
-﻿@using Newtonsoft.Json
+﻿@using BlazorApp.Models
+@using Microsoft.AspNetCore.Components.Web.HtmlRendering
+@using Newtonsoft.Json
+@implements IDisposable
 
 @page "/weather"
 @attribute [StreamRendering]
+@inject IJSRuntime JSRuntime 
 
 <PageTitle>Weather</PageTitle>
 
 <h1>Weather</h1>
 
-<p>This component demonstrates showing data.</p>
-
-@if (forecasts == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
-            {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
+<div class="section">
+    <div class="row">
+        <div class="col">
+            <div id="map" style="height:400px;width:100%;"></div>
+        </div>
+        <div class="col">
+            <div class="card" style="height:400px">
+                <div class="card-body overflow-auto ">
+                    @if (Model == null || Model?.CurrentData == null){
+                        <h5 class="card-title">Weather Data</h5>
+                        <p class="card-text">Click on the map to get the weather data</p>
+                    }
+                    else{
+                        <div class="row mt-4">
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <h1 class="mb-0">@GetWeatherDescriptionEmoji(Model.CurrentData.WeatherCode[0]) @Model.CurrentData.Temperature2m[0] @Model.HourlyUnits.Temperature2m</h1>
+                                <span class="small text-muted">@GetWeatherDescription(Model.CurrentData.WeatherCode[0])</span>
+                            </div>
+                        </div>
+                        <hr />
+                        <div class="row mt-5">
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <span class="small text-muted">Apparent Temp</span>
+                                <span>@Model.CurrentData.ApparentTemperature[0] @Model.HourlyUnits.ApparentTemperature</span>
+                            </div>
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <span class="small text-muted">Precipitation</span>
+                                <span>@Model.CurrentData.PrecipitationProbability[0] @Model.HourlyUnits.PrecipitationProbability</span>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <span class="small text-muted">Rain</span>
+                                <span>@Model.CurrentData.Rain[0] @Model.HourlyUnits.Rain</span>
+                            </div>
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <span class="small text-muted">Snow</span>
+                                <span>@Model.CurrentData.Snow[0] @Model.HourlyUnits.Snow</span>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <span class="small text-muted">Wind Direction</span>
+                                <span>@WindDirection(Model.CurrentData.WindDirection[0])</span>
+                            </div>
+                            <div class="col d-flex justify-content-center align-items-center flex-column">
+                                <span class="small text-muted">Wind Speed</span>
+                                <span>@Model.CurrentData.WindSpeed[0] @Model.HourlyUnits.WindSpeed</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col">
+            @if (Model == null || Model?.HourlyData == null || Model?.HourlyData.Time == null){
+                <h3>No data available</h3>
+                <p>Please click on the map to get the weather data</p>
             }
-        </tbody>
-    </table>
+            else{
+                <h3>7 day forecast</h3>
+                <select class="form-select" aria-label="Default select example" @bind="SelectedDay">
+                    @for (int i = 0; i < Days.Count; i++)
+                    {
+                        <option>@Days[i]</option>
+                    }
+                </select>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Time</th>
+                            <th class="text-center">Temp</th>
+                            <th class="text-center">Apparent Temp</th>
+                            <th class="text-center">Precipitation</th>
+                            <th class="text-center">Rain</th>
+                            <th class="text-center">Snow</th>
+                            <th class="text-center">Wind Direction</th>
+                            <th class="text-center">Wind Speed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for(int i = 0; i < HourlyData.Count; i++)
+                        {
+                            if (SelectedDay == null || SelectedDay == Days[i])
+                            {
+                                for (int j = 0; j < HourlyData[i].Time.Length; j++)
+                                {
+                                    <tr>
+                                        <td class="text-center">@HourlyData[i].Time[j].Split("T")[1]</td>
+                                        <td class="text-center">@HourlyData[i].Temperature2m[j] @HourlyUnits[i].Temperature2m</td>
+                                        <td class="text-center">@HourlyData[i].ApparentTemperature[j] @HourlyUnits[i].ApparentTemperature</td>
+                                        <td class="text-center">@HourlyData[i].PrecipitationProbability[j] @HourlyUnits[i].PrecipitationProbability</td>
+                                        <td class="text-center">@HourlyData[i].Rain[j] @HourlyUnits[i].Rain</td>
+                                        <td class="text-center">@HourlyData[i].Snow[j] @HourlyUnits[i].Snow</td>
+                                        <td class="text-center">@WindDirection(HourlyData[i].WindDirection[j])</td>
+                                        <td class="text-center">@HourlyData[i].WindSpeed[j] @HourlyUnits[i].WindSpeed</td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
 }
-
-@if (newforecasts == null || newforecasts?.HourlyData == null || newforecasts?.HourlyData.Time == null){
-    <p><em>Loading...</em></p>
-}
-else{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Temperature 2m</th>
-                <th>Apparent Temperature</th>
-                <th>Precipitation Probability</th>
-            </tr>
-        </thead>
-        <tbody>
-            @for (int i = 0; i < newforecasts.HourlyData.Time.Length; i++)
-            {
-                <tr>
-                    <td>@newforecasts.HourlyData.Time[i].Split("T")[1]</td>
-                    <td>@newforecasts.HourlyData.Temperature2m[i] @newforecasts.HourlyUnits.Temperature2m</td>
-                    <td>@newforecasts.HourlyData.ApparentTemperature[i] @newforecasts.HourlyUnits.ApparentTemperature</td>
-                    <td>@newforecasts.HourlyData.PrecipitationProbability[i] @newforecasts.HourlyUnits.PrecipitationProbability</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+        </div>
+    </div>
+</div>
 
 @code {
-    private WeatherForecast[]? forecasts;
+    private DotNetObjectReference<Weather>? dotNetHelper;
+    private WeatherData? Model;
+    private List<string> Dates = new List<string>();
+    private List<string> Days = new List<string>();
+    private List<HourlyData> HourlyData = new List<HourlyData>();
+    private List<HourlyUnits> HourlyUnits = new List<HourlyUnits>();
+    private string? SelectedDay;
 
-    private NewWeatherData? newforecasts;
-    private string _connectionString = "https://api.open-meteo.com/v1/";
-
-    protected override async Task OnInitializedAsync()
-    {
-        
-        // Simulate asynchronous loading to demonstrate streaming rendering
-        await Task.Delay(500);
-
-        var startDate = DateOnly.FromDateTime(DateTime.Now);
-        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
-        forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
-        {
-            Date = startDate.AddDays(index),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = summaries[Random.Shared.Next(summaries.Length)]
-        }).ToArray();
-
-        await GetLiveData();
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if (firstRender){
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("MapsHelpers.setDotNetHelper", dotNetHelper);
+        }
     }
 
-    private async Task GetLiveData()
+    [JSInvokable]
+    public async Task GetLiveData(double lat, double lon)
     {
+        var forecasts = new WeatherData();
         using (var client = new HttpClient())
         {
-            client.BaseAddress = new Uri(_connectionString);
+            client.BaseAddress = new Uri("https://api.open-meteo.com/v1/");
             client.DefaultRequestHeaders.Accept.Clear();
 
-            var lat = 55.67;
-            var lon = 12.56;
-            var url = $"forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability&forecast_days=1";
+            // round the lat and lon to 2 decimal places
+            lat = Math.Round(lat, 2);
+            lon = Math.Round(lon, 2);
+
+            // hourly forecast data for 7 days
+            var url = $"forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability,rain,snowfall,wind_direction_10m,wind_speed_10m,weather_code&forecast_days=7";
+            // past 15 minutes data
+            url += "&minutely_15=temperature_2m,apparent_temperature,precipitation_probability,rain,snowfall,wind_direction_10m,wind_speed_10m,weather_code&forecast_minutely_15=1&wind_speed_unit=ms";
 
             HttpResponseMessage response = await client.GetAsync(url);
             if (response.IsSuccessStatusCode)
             {
                 var apiData = await response.Content.ReadAsStringAsync();
-                var temp = JsonConvert.DeserializeObject<List<NewWeatherData>>(apiData);
+                var temp = JsonConvert.DeserializeObject<List<WeatherData>>(apiData);
+            
                 if (temp != null)
                 {
-                    newforecasts = temp[0];
+                    Model = temp[0];
                 }
-            }
+
+                MapDataToDays();
+            }   
+        }
+
+        StateHasChanged();
+    }
+
+
+    private void MapDataToDays()
+    {
+        if (Model == null)
+        {
+            return;
+        }
+
+        // get the days from the model
+        Dates = Model.HourlyData.Time.Select(x => x.Split("T")[0]).Distinct().ToList();
+
+        Days = Dates.Select(x => DateTime.Parse(x).ToString("dddd")).Distinct().ToList();
+
+        Days[0] = "Today";
+        Days[1] = "Tomorrow";
+
+        // clear the existing data
+        HourlyData.Clear();
+        HourlyUnits.Clear();
+
+        // get the hourly data for each day
+        foreach (var date in Dates)
+        {
+            var hourlyData = new HourlyData();
+            var idxs = Model.HourlyData.Time.Select((x, i) => new { x, i }).Where(v => v.x.Contains(date)).Select(x => x.i).ToArray();
+
+            hourlyData.Time = idxs.Select(x => Model.HourlyData.Time[x]).ToArray();
+            hourlyData.Temperature2m = idxs.Select(x => Model.HourlyData.Temperature2m[x]).ToArray();
+            hourlyData.ApparentTemperature = idxs.Select(x => Model.HourlyData.ApparentTemperature[x]).ToArray();
+            hourlyData.PrecipitationProbability = idxs.Select(x => Model.HourlyData.PrecipitationProbability[x]).ToArray();
+            hourlyData.Rain = idxs.Select(x => Model.HourlyData.Rain[x]).ToArray();
+            hourlyData.Snow = idxs.Select(x => Model.HourlyData.Snow[x]).ToArray();
+            hourlyData.WindDirection = idxs.Select(x => Model.HourlyData.WindDirection[x]).ToArray();
+            hourlyData.WindSpeed = idxs.Select(x => Model.HourlyData.WindSpeed[x]).ToArray();
+            hourlyData.WeatherCode = idxs.Select(x => Model.HourlyData.WeatherCode[x]).ToArray();
+
+            var units = new HourlyUnits();
+            units.Temperature2m = Model.HourlyUnits.Temperature2m;
+            units.ApparentTemperature = Model.HourlyUnits.ApparentTemperature;
+            units.PrecipitationProbability = Model.HourlyUnits.PrecipitationProbability;
+            units.Rain = Model.HourlyUnits.Rain;
+            units.Snow = Model.HourlyUnits.Snow;
+            units.WindDirection = Model.HourlyUnits.WindDirection;
+            units.WindSpeed = Model.HourlyUnits.WindSpeed;
+            units.WeatherCode = Model.HourlyUnits.WeatherCode;
+
+            HourlyData.Add(hourlyData);
+            HourlyUnits.Add(units);
+
+            SelectedDay = Days[0];
         }
     }
 
-    private class WeatherForecast
+
+    public void Dispose()
     {
-        public DateOnly Date { get; set; }
-        public int TemperatureC { get; set; }
-        public string? Summary { get; set; }
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+        dotNetHelper?.Dispose();
     }
 
-    public class NewWeatherData
+    private string GetWeatherDescription(int weatherCode)
     {
-        [JsonProperty("hourly_units")]
-        public HourlyUnits HourlyUnits { get; set; } = new HourlyUnits();
-
-        [JsonProperty("hourly")]
-        public HourlyData HourlyData { get; set; } = new HourlyData();
+        return weatherCode switch
+        {
+            0 => "Clear sky",
+            1 or 2 or 3 => "Mainly clear, partly cloudy, and overcast",
+            45 or 48 => "Fog and depositing rime fog",
+            51 or 53 or 55 => "Drizzle: Light, moderate, and dense intensity",
+            56 or 57 => "Freezing Drizzle: Light and dense intensity",
+            61 or 63 or 65 => "Rain: Slight, moderate and heavy intensity",
+            66 or 67 => "Freezing Rain: Light and heavy intensity",
+            71 or 73 or 75 => "Snow fall: Slight, moderate, and heavy intensity",
+            77 => "Snow grains",
+            80 or 81 or 82 => "Rain showers: Slight, moderate, and violent",
+            85 or 86 => "Snow showers slight and heavy",
+            95 => "Thunderstorm: Slight or moderate",
+            96 or 99 => "Thunderstorm with slight and heavy hail",
+            _ => "Unknown weather condition"
+        };
     }
 
-    public class HourlyUnits
+    private string GetWeatherDescriptionEmoji(int weatherCode)
     {
-        [JsonProperty("time")]
-        public string Time { get; set; } = string.Empty;
-
-        [JsonProperty("temperature_2m")]
-        public string Temperature2m { get; set; } = string.Empty;
-
-        [JsonProperty("apparent_temperature")]
-        public string ApparentTemperature { get; set; } = string.Empty;
-
-        [JsonProperty("precipitation_probability")]
-        public string PrecipitationProbability { get; set; } = string.Empty;
+        return weatherCode switch
+        {
+            0 => "☀️",
+            1 or 2 or 3 => "🌥️",
+            45 or 48 => "🌫️",
+            51 or 53 or 55 => "🌧️",
+            56 or 57 => "🌧️",
+            61 or 63 or 65 => "🌧️",
+            66 or 67 => "🌧️",
+            71 or 73 or 75 => "❄️",
+            77 => "❄️",
+            80 or 81 or 82 => "🌧️",
+            85 or 86 => "❄️",
+            95 => "⛈️",
+            96 or 99 => "⛈️",
+            _ => "❓"
+        };
     }
 
-    public class HourlyData
+    private string WindDirection(double windDirection)
     {
-        [JsonProperty("time")]
-        public string[] Time { get; set; } = Array.Empty<string>();
-
-        [JsonProperty("temperature_2m")]
-        public double[] Temperature2m { get; set; } = Array.Empty<double>();
-
-        [JsonProperty("apparent_temperature")]
-        public double[] ApparentTemperature { get; set; }  = Array.Empty<double>();
-
-        [JsonProperty("precipitation_probability")]
-        public int[] PrecipitationProbability { get; set; } = Array.Empty<int>();
+        return windDirection switch
+        {
+            _ when windDirection >= 0 && windDirection < 22.5 => "N",
+            _ when windDirection >= 22.5 && windDirection < 67.5 => "NE",
+            _ when windDirection >= 67.5 && windDirection < 112.5 => "E",
+            _ when windDirection >= 112.5 && windDirection < 157.5 => "SE",
+            _ when windDirection >= 157.5 && windDirection < 202.5 => "S",
+            _ when windDirection >= 202.5 && windDirection < 247.5 => "SW",
+            _ when windDirection >= 247.5 && windDirection < 292.5 => "W",
+            _ when windDirection >= 292.5 && windDirection < 337.5 => "NW",
+            _ when windDirection >= 337.5 => "N",
+            _ => "Unknown"
+        };
     }
 }
-
-
