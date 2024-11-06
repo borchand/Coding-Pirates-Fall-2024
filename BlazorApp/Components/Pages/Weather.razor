@@ -158,13 +158,8 @@
             if (response.IsSuccessStatusCode)
             {
                 var apiData = await response.Content.ReadAsStringAsync();
-                var temp = JsonConvert.DeserializeObject<List<WeatherData>>(apiData);
+                Model = JsonConvert.DeserializeObject<WeatherData>(apiData);
             
-                if (temp != null)
-                {
-                    Model = temp[0];
-                }
-
                 MapDataToDays();
             }   
         }

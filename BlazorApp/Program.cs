@@ -1,4 +1,7 @@
+using System.Globalization;
 using BlazorApp.Components;
+
+CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
 
 var builder = WebApplication.CreateBuilder(args);
 
