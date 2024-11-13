@@ -18,8 +18,7 @@
     </div>
 </div>
 
-
-@if (Model == null || Model?.HourlyData == null || Model?.HourlyData.Time == null){
+@if (_model == null || _model?.HourlyData == null || _model?.HourlyData.Time == null){
     <p><em>Loading...</em></p>
 }
 else{
@@ -33,13 +32,13 @@ else{
             </tr>
         </thead>
         <tbody>
-            @for (int i = 0; i < Model.HourlyData.Time.Length; i++)
+            @for (int i = 0; i < _model.HourlyData.Time.Length; i++)
             {
                 <tr>
-                    <td>@Model.HourlyData.Time[i].Split("T")[1]</td>
-                    <td>@Model.HourlyData.Temperature2m[i] @Model.HourlyUnits.Temperature2m</td>
-                    <td>@Model.HourlyData.ApparentTemperature[i] @Model.HourlyUnits.ApparentTemperature</td>
-                    <td>@Model.HourlyData.PrecipitationProbability[i] @Model.HourlyUnits.PrecipitationProbability</td>
+                    <td>@_model.HourlyData.Time[i].Split("T")[1]</td>
+                    <td>@_model.HourlyData.Temperature2m[i] @_model.HourlyUnits.Temperature2m</td>
+                    <td>@_model.HourlyData.ApparentTemperature[i] @_model.HourlyUnits.ApparentTemperature</td>
+                    <td>@_model.HourlyData.PrecipitationProbability[i] @_model.HourlyUnits.PrecipitationProbability</td>
                 </tr>
             }
         </tbody>
@@ -47,9 +46,9 @@ else{
 }
 
 @code {
-    private DotNetObjectReference<OldWeather>? dotNetHelper;
+    private DotNetObjectReference<OldWeather>? _dotNetHelper;
 
-    private WeatherData? Model;
+    private WeatherData? _model;
 
     private string _connectionString = "https://api.open-meteo.com/v1/";
 
@@ -57,34 +56,30 @@ else{
     {
         if (firstRender)
         {
-            dotNetHelper = DotNetObjectReference.Create(this);
-            await JSRuntime.InvokeVoidAsync("mapsHelpers.setDotNetHelper", dotNetHelper);
+            _dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("MapsHelpers.setDotNetHelper", _dotNetHelper);
         }
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await GetLiveData();
-    }
-
-    private async Task GetLiveData()
+    [JSInvokable]
+    public async Task GetLiveData(double lat, double lon)
     {
         using (var client = new HttpClient())
         {
             client.BaseAddress = new Uri(_connectionString);
             client.DefaultRequestHeaders.Accept.Clear();
 
-            var lat = 55.67;
-            var lon = 12.56;
             var url = $"forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability&forecast_days=1";
 
             HttpResponseMessage response = await client.GetAsync(url);
             if (response.IsSuccessStatusCode)
             {
                 var apiData = await response.Content.ReadAsStringAsync();
-                var Model = JsonConvert.DeserializeObject<WeatherData>(apiData);
+
+                _model = JsonConvert.DeserializeObject<WeatherData>(apiData);
             }
         }
+        StateHasChanged();
     }
 }
 
