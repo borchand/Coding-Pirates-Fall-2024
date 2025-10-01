@@ -14,7 +14,32 @@
         <div class="col">
             <div id="map" style="height:400px;width:100%;"></div>
         </div>
-        <div class="col"></div>
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    @if(_model == null){
+                        <h1>Ingen data</h1>
+                    } else {
+                        <div class="row">
+                            <div class="col d-flex justify-content-center">
+                                <h1>
+                                    @_model.CurrentData.Temperature2m[0] @_model.HourlyUnits.Temperature2m[0]
+                                </h1>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <span class="small text-muted">Wind Speed</span>
+                                <span>@_model.CurrentData.WindSpeed[0] @_model.HourlyUnits.WindSpeed</span>
+                            </div>
+                            <div class="col">
+
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -70,6 +95,8 @@ else{
             client.DefaultRequestHeaders.Accept.Clear();
 
             var url = $"forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability&forecast_days=1";
+
+            url += "&minutely_15=temperature_2m,apparent_temperature,precipitation_probability,rain,snowfall,wind_direction_10m,wind_speed_10m,weather_code&forecast_minutely_15=1&wind_speed_unit=ms";
 
             HttpResponseMessage response = await client.GetAsync(url);
             if (response.IsSuccessStatusCode)
